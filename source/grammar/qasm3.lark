@@ -1,0 +1,74 @@
+program : version? global_statement*
+
+version : "OPENQASM" INT ("." INT)
+
+?global_statement
+  : include
+  | qubit_declaration
+  | const_declaration
+  | statement
+
+?statement
+  | classical_declaration
+  | length_declaration
+  | qubit_alias
+
+include : "include" STRING ";"
+
+qubit_declaration : "qubit" qubit size? ";"
+
+?qubit
+  : VARIABLE -> logical
+  | "%" INT -> physical
+
+classical_declaration : type VARIABLE size? ";"
+
+?type
+  : "bit" -> bit
+  | "uint" size -> uint
+  | "int" size -> int
+  | "fixed" "[" INT "," INT "]" -> fixed
+  | "float" size -> float
+  | "angle" size -> angle
+  | "bool" -> bool
+
+?size : "[" INT "]"
+
+const_declaration : "const" VARIABLE "=" const_expression ";"
+const_expression : // TODO
+
+length_declaration : "length" VARIABLE "=" length_expression ";"
+length_expression : FLOAT length_units | lengthof_expression
+!length_units : "ns" | "µs" | "ms" | "s"
+lengthof_expression : "lengthof" "(" VARIABLE ")"
+
+qubit_alias : "let" VARIABLE "=" qubit_expression
+qubit_expression
+  : qubit_expression "||" qubit_expression -> concatenation
+  | VARIABLE "[" INT ("," INT)* "]" -> selection
+  | VARIABLE "[" INT (":" INT){0,2} "]" -> slice
+
+// TODO: cast expression
+
+// TODO: Variable identifiers must begin with a letter [A-Za-z], an underscore, 
+// a percent sign, or an element from the Unicode character categories 
+// Lu/Ll/Lt/Lm/Lo/NI
+%import common.CNAME
+VARIABLE : CNAME
+
+// Common set of tokens
+%import common.FLOAT
+%import common.INT
+STRING : "\"" /.*?/ "\""
+
+// Ignore // style comments
+%import common.CPP_COMMENT
+%ignore CPP_COMMENT
+
+// Ignore /* */ style comments
+%import common.C_COMMENT
+%ignore C_COMMENT
+
+// Ignore whitespace and newlines
+%import common.WS
+%ignore WS
